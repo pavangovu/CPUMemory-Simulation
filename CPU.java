@@ -1,7 +1,7 @@
 import java.io.File;
 import java.util.Scanner;
 
-public class Project1
+public class CPU
 {
    public static void main(String args[])throws Exception
    {
