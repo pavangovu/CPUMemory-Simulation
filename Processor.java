@@ -89,17 +89,15 @@ public class Processor
    private static int alarm=0;                           //code for interrupt timer
    private static int instructionCount=0;                //total number of instructions
    private static boolean interruptsDisabled = false;    //Interrupts should be disabled during interrupt childProcessessing to avoid nested execution
-   private static boolean inUserMode = true;             //whether or not system is in user mode
-   
-                                                                
+   private static boolean inUserMode = true;             //whether or not system is in user mode                                                            
    
    //System Registers
-   private static int programCounter=0;                  //PC register
-   private static int stackPointer=1000;                 //SPregister
-   private static int instructionRegister=0;             //IR register
-   private static int accumulator=0;                     //AC register
    private static int xRegister=0;                       //X register
-   private static int yRegister=0;                       //Y register
+   private static int yRegister=0;                       //Y register 
+   private static int stackPointer=1000;                 //SPregister
+   private static int accumulator=0;                     //AC register
+   private static int instructionRegister=0;             //IR register
+   private static int programCounter=0;                  //PC register
    
    public static void main(String args[])throws Exception
    {
@@ -190,7 +188,7 @@ public class Processor
          System.out.println("Memory violation: accessing system address 1000 in user mode ");
          System.exit(0);
       }
-      printWriter.printf("1," + address + "\n");
+      printWriter.printf("1," + address +"\n");
       printWriter.flush();
       if (fetchFromMemory.hasNext())
       {
@@ -199,15 +197,14 @@ public class Processor
          {
             int next = Integer.parseInt(current);
             return (next); 
-         }
-      
+         } 
       }
       return -1;
    }
    
    
    private static void storeValue(PrintWriter printWriter, InputStream inputStream, OutputStream outputStream, int address, int data) {
-      printWriter.printf("2," + address + "," + data + "\n");
+      printWriter.printf("2,"+address+ "," +data+"\n");
       printWriter.flush();
    }
 
@@ -215,7 +212,7 @@ public class Processor
    private static void instructionSet(int code, PrintWriter printWriter, InputStream inputStream, Scanner fetchFromMemory, OutputStream outputStream) 
    {
       instructionRegister = code;
-      int opCode;    
+      int opCode;   
       
       switch(instructionRegister)
       {
@@ -225,48 +222,48 @@ public class Processor
             accumulator = opCode;
             if(interruptsDisabled == false) 
                instructionCount++;
-            programCounter++;
+            increment();
             break;
          
          //Load addr 
          case 2:
-            programCounter++;
-            opCode = readFromMemory(printWriter, inputStream, fetchFromMemory, outputStream, programCounter);
+            
+            opCode = readFromMemory(printWriter, inputStream, fetchFromMemory, outputStream, ++programCounter);
             accumulator = readFromMemory(printWriter, inputStream, fetchFromMemory, outputStream, opCode);
             if(interruptsDisabled == false) 
                instructionCount++;
-            programCounter++;
+            increment();
             break;
       
          //LoadInd addr
          case 3:
-            programCounter++;
-            opCode = readFromMemory(printWriter, inputStream, fetchFromMemory, outputStream, programCounter);
+            
+            opCode = readFromMemory(printWriter, inputStream, fetchFromMemory, outputStream, ++programCounter);
             opCode = readFromMemory(printWriter, inputStream, fetchFromMemory, outputStream, opCode);
             accumulator = readFromMemory(printWriter, inputStream, fetchFromMemory, outputStream, opCode);
             if(interruptsDisabled == false) 
                instructionCount++;
-            programCounter++;
+            increment();
             break;
          
          //LoadIdxX addr   
          case 4:
-            programCounter++;
-            opCode = readFromMemory(printWriter, inputStream, fetchFromMemory, outputStream, programCounter);
+            
+            opCode = readFromMemory(printWriter, inputStream, fetchFromMemory, outputStream, ++programCounter);
             accumulator = readFromMemory(printWriter, inputStream, fetchFromMemory, outputStream, opCode + xRegister);
             if(interruptsDisabled == false) 
                instructionCount++;
-            programCounter++;
+            increment();
             break;
          
          //LoadIdxY addr    
          case 5: 
-            programCounter++;
-            opCode = readFromMemory(printWriter, inputStream, fetchFromMemory, outputStream, programCounter);
+            increment();
+            opCode = readFromMemory(printWriter, inputStream, fetchFromMemory, outputStream, ++programCounter);
             accumulator = readFromMemory(printWriter, inputStream, fetchFromMemory, outputStream, opCode + yRegister);
             if(interruptsDisabled == false) 
                instructionCount++;
-            programCounter++;
+            increment();
             break;
          
          //LoadSpX    
@@ -274,17 +271,16 @@ public class Processor
             accumulator = readFromMemory(printWriter, inputStream, fetchFromMemory, outputStream, stackPointer + xRegister);
             if(interruptsDisabled == false) 
                instructionCount++;
-            programCounter++;
+            increment();
             break;
          
          //Store addr    
          case 7: 
-            programCounter++;
-            opCode = readFromMemory(printWriter, inputStream, fetchFromMemory, outputStream, programCounter);
+            opCode = readFromMemory(printWriter, inputStream, fetchFromMemory, outputStream, ++programCounter);
             storeValue(printWriter, inputStream, outputStream, opCode, accumulator);
             if(interruptsDisabled == false) 
                instructionCount++;
-            programCounter++;
+            increment();
             break;
          
          //Get    
@@ -294,19 +290,19 @@ public class Processor
             accumulator = i;
             if(interruptsDisabled == false) 
                instructionCount++;
-            programCounter++;
+            increment();
             break;
          
          //Put port    
          case 9: 
-            programCounter++;
-            opCode = readFromMemory(printWriter, inputStream, fetchFromMemory, outputStream, programCounter);
+            
+            opCode = readFromMemory(printWriter, inputStream, fetchFromMemory, outputStream, ++programCounter);
             if(opCode == 1)
             {
                System.out.print(accumulator);
                if(interruptsDisabled == false) 
                   instructionCount++;
-               programCounter++;
+               increment();
                break;
             
             }
@@ -315,7 +311,7 @@ public class Processor
                System.out.print((char)accumulator);
                if(interruptsDisabled == false) 
                   instructionCount++;
-               programCounter++;
+               increment();
                break;
             }
             else
@@ -323,7 +319,7 @@ public class Processor
                System.out.println("Error: PocurrentRuntime = " + opCode);
                if(interruptsDisabled == false) 
                   instructionCount++;
-               programCounter++;
+               increment();
                System.exit(0);
                break;
             }
@@ -333,7 +329,7 @@ public class Processor
             accumulator = accumulator + xRegister;
             if(interruptsDisabled == false) 
                instructionCount++;
-            programCounter++;
+            increment();
             break;
          
          //AddY    
@@ -341,7 +337,7 @@ public class Processor
             accumulator = accumulator + yRegister;
             if(interruptsDisabled == false) 
                instructionCount++;
-            programCounter++;
+            increment();
             break;
          
          //SubX    
@@ -349,7 +345,7 @@ public class Processor
             accumulator = accumulator - xRegister;
             if(interruptsDisabled == false) 
                instructionCount++;
-            programCounter++;
+            increment();
             break;
             
          //SubY
@@ -357,7 +353,7 @@ public class Processor
             accumulator = accumulator - yRegister;
             if(interruptsDisabled == false) 
                instructionCount++;
-            programCounter++;
+            increment();
             break;
          
          //CopyToX    
@@ -365,7 +361,7 @@ public class Processor
             xRegister = accumulator;
             if(interruptsDisabled == false) 
                instructionCount++;
-            programCounter++;
+            increment();
             break;
          
          //CopyFromX    
@@ -373,7 +369,7 @@ public class Processor
             accumulator = xRegister;
             if(interruptsDisabled == false) 
                instructionCount++;
-            programCounter++;
+            increment();
             break;
          
          //CopyToY    
@@ -381,7 +377,7 @@ public class Processor
             yRegister = accumulator;
             if(interruptsDisabled == false) 
                instructionCount++;
-            programCounter++;
+            increment();
             break;
              
          //CopyFromY    
@@ -389,7 +385,7 @@ public class Processor
             accumulator = yRegister;
             if(interruptsDisabled == false) 
                instructionCount++;
-            programCounter++;
+            increment();
             break;
          
          //CopyToSp    
@@ -397,7 +393,7 @@ public class Processor
             stackPointer = accumulator;
             if(interruptsDisabled == false) 
                instructionCount++;
-            programCounter++;
+            increment();
             break;
          
          //CopyFromSp       
@@ -405,13 +401,13 @@ public class Processor
             accumulator = stackPointer;
             if(interruptsDisabled == false) 
                instructionCount++;
-            programCounter++;
+            increment();
             break;
          
          //Jump addr    
          case 20:
-            programCounter++;
-            opCode = readFromMemory(printWriter, inputStream, fetchFromMemory, outputStream, programCounter);
+            
+            opCode = readFromMemory(printWriter, inputStream, fetchFromMemory, outputStream, ++programCounter);
             programCounter = opCode;
             if(interruptsDisabled == false) 
                instructionCount++;
@@ -419,8 +415,8 @@ public class Processor
          
          //JumpIfEqual addr    
          case 21:
-            programCounter++;
-            opCode = readFromMemory(printWriter, inputStream, fetchFromMemory, outputStream, programCounter);
+            
+            opCode = readFromMemory(printWriter, inputStream, fetchFromMemory, outputStream, ++programCounter);
             if (accumulator == 0) 
             {
                programCounter = opCode;
@@ -430,13 +426,13 @@ public class Processor
             }
             if(interruptsDisabled == false) 
                instructionCount++;
-            programCounter++;
+            increment();
             break;
              
          //JumpIfNotEqual    
          case 22:
-            programCounter++;
-            opCode = readFromMemory(printWriter, inputStream, fetchFromMemory, outputStream, programCounter);
+            
+            opCode = readFromMemory(printWriter, inputStream, fetchFromMemory, outputStream, ++programCounter);
             if (accumulator != 0) 
             {
                programCounter = opCode;
@@ -446,13 +442,13 @@ public class Processor
             }
             if(interruptsDisabled == false) 
                instructionCount++;
-            programCounter++;
+            increment();
             break;
          
          //Call addr    
          case 23:
-            programCounter++;
-            opCode = readFromMemory(printWriter, inputStream, fetchFromMemory, outputStream, programCounter);
+            
+            opCode = readFromMemory(printWriter, inputStream, fetchFromMemory, outputStream, ++programCounter);
             stackPointer--;
             storeValue(printWriter, inputStream, outputStream, stackPointer, programCounter+1);
             programCounter = opCode;
@@ -473,7 +469,7 @@ public class Processor
             xRegister++;
             if(interruptsDisabled == false) 
                instructionCount++;
-            programCounter++;
+            increment();
             break;
          
          //DecX 
@@ -481,14 +477,14 @@ public class Processor
             xRegister--;
             if(interruptsDisabled == false) 
                instructionCount++;
-            programCounter++;
+            increment();
             break;
          
          //Push
          case 27:
             stackPointer--;
             storeValue(printWriter, inputStream, outputStream, stackPointer, accumulator);
-            programCounter++;
+            increment();
             if(interruptsDisabled == false) 
                instructionCount++;
             break;
@@ -496,7 +492,7 @@ public class Processor
          //Pop    
          case 28:
             accumulator = pop(printWriter, inputStream, fetchFromMemory, outputStream);
-            programCounter++;
+            increment();
             if(interruptsDisabled == false) 
                instructionCount++;
             break;
@@ -545,11 +541,18 @@ public class Processor
       }
    }
 
+   //pop from stack
    private static int pop(PrintWriter printWriter, InputStream inputStream, Scanner fetchFromMemory, OutputStream outputStream) 
    {
       int current = readFromMemory(printWriter, inputStream, fetchFromMemory, outputStream, stackPointer);
       storeValue(printWriter, inputStream, outputStream, stackPointer, 0);
       stackPointer++;
       return current;
+   }
+   
+   //for readability
+   private static void increment()
+   {
+      ++programCounter;
    }
 }
