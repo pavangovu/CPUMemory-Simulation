@@ -459,7 +459,7 @@ public class Processor
 
 class MainMemory
 {   
-   private static int [] registers = new int[2000]; // int array to implement registers
+   private static int [] registers = new int[2000];
    
    public static void main(String args[])throws Exception
    {
@@ -475,7 +475,6 @@ class MainMemory
      
       while(scanner.hasNext())
       {
-            //if integer found then write to registers array
          if(scanner.hasNextInt())
          {
             next = scanner.nextInt();
@@ -484,19 +483,16 @@ class MainMemory
          else
          {
             current = scanner.next();
-               // if token stacurrentRuntimes with ".", then move the counter appropriately
             if(current.charAt(0) == '.')
             {
                registerPosition = Integer.parseInt(current.substring(1));
             }
                
-               // else if the token is a comment then skip the input
             else if(current.equals("//"))
             {
                scanner.nextLine();
             }
                
-               // skip the input if anything else
             else
                scanner.nextLine();
          }
@@ -513,15 +509,12 @@ class MainMemory
             input = fetchFromCPU.nextLine(); 
             if(!input.isEmpty())
             {
-               String [] split = input.split(",");                      
+               String [] split = input.split(",");
+                                     
                if(split[0].equals("1"))    
-               {
-                  position = Integer.parseInt(split[1]);
-                  System.out.println(registers[position]);
-               }   
+                  System.out.println(registers[Integer.parseInt(split[1])]); 
                else
-                  registers[Integer.parseInt(split[1])]=Integer.parseInt(split[2]);
-               
+                  registers[Integer.parseInt(split[1])]=Integer.parseInt(split[2]);   
             }
             else 
                break;
