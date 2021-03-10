@@ -17,7 +17,7 @@ public class Processor
    private static boolean interruptsDisabled = false;    //Interrupts should be disabled during interrupt childProcessessing to avoid nested execution
    private static int userMemoryLimit=1000;              //0-999 for the user program
    private static int systemMemoryLimit=2000;            //1000-1999 for system code
-   private static int alarm=0;                           //value for interrupt timer                                                             
+   private static int alarm=0;                           //code for interrupt timer                                                             
    
    //System Registers
    private static int programCounter=0;                  //PC register
@@ -31,81 +31,91 @@ public class Processor
    {
       String inputFileName;//holds input sample.txt file
                
-      //filename and timer interrupt value arguments required
+      //filename and timer interrupt code arguments required
       if(args.length <2)
       {
-         System.out.println("Insufficient Arguments! Please include filename and timer-interrupt value.");
+         System.out.println("Insufficient Arguments! Please include filename and timer-interrupt code.");
          System.exit(0);//kill the program
       }
       
       //parse command line arguments
       inputFileName=args[0];
       alarm=Integer.parseInt(args[1]);//String to int conversion
-   
-      try
-      {            
-         Runtime currentRuntime = Runtime.getRuntime();
+              
+      Runtime currentRuntime = Runtime.getRuntime();
       
          //equivalent of UNIX fork command
-         Process childProcess = currentRuntime.exec("java MainMemory");
+      Process childProcess = currentRuntime.exec("java MainMemory");
       
          //set up communication between Main Memory and CPU
-         InputStream inputStream = childProcess.getInputStream();
-         Scanner memory_reader = new Scanner(inputStream);
-         OutputStream outputStream = childProcess.getOutputStream();
-         PrintWriter printWriter = new PrintWriter(outputStream);
+      InputStream inputStream = childProcess.getInputStream();
+      Scanner memory_reader = new Scanner(inputStream);
+      OutputStream outputStream = childProcess.getOutputStream();
+      PrintWriter printWriter = new PrintWriter(outputStream);
       
       
-         printWriter.printf(inputFileName + "\n");
-         printWriter.flush();
+      printWriter.printf(inputFileName + "\n");
+      printWriter.flush();
          
-         // this loop will keep the communication going between CPU and memory
-         while (true)
-         {
-            if(instructionCount > 0)
-               if((instructionCount % alarm) == 0)
-                  if(interruptsDisabled == false)
-                  {
-                     interruptsDisabled = true;
-                     int operand;
-                     inUserMode = false;
-                     operand = stackPointer;
-                     stackPointer = systemMemoryLimit;
-                     stackPointer--;
-                     writeToMemory(printWriter, inputStream, outputStream, stackPointer, operand);
-                  
-                     operand = programCounter;
-                     programCounter = 1000;
-                     stackPointer--;
-                     writeToMemory(printWriter, inputStream, outputStream, stackPointer, operand);
-                  }
-            
-            // read instruction from memory
-            int value = readFromMemory(printWriter, inputStream, memory_reader, outputStream, programCounter);
-            
-            if (value != -1)
-            {
-               childProcessessInstruction(value, printWriter, inputStream, memory_reader, outputStream);
-            }
-            else
-               break;
-         }
+      boolean systemOn=true;
          
-         childProcess.waitFor();
-         int exitVal = childProcess.exitValue();
-         System.out.println("Process exited: " + exitVal);
-      
-      } 
-      catch (IOException | InterruptedException t)
+      while (systemOn)
       {
-         t.printStackTrace();
+         if(instructionCount > 0)
+            if((instructionCount % alarm) == 0)
+               if(interruptsDisabled == false)
+               {
+                  interruptsDisabled = true;
+                  int operand;
+                  inUserMode = false;
+                  operand = stackPointer;
+                  stackPointer = systemMemoryLimit;
+                  stackPointer--;
+                  writeToMemory(printWriter, inputStream, outputStream, stackPointer, operand);
+                  
+                  operand = programCounter;
+                  programCounter = 1000;
+                  stackPointer--;
+                  writeToMemory(printWriter, inputStream, outputStream, stackPointer, operand);
+               }
+            
+         int code = readFromMemory(printWriter, inputStream, memory_reader, outputStream, programCounter);
+         if(inUserMode && programCounter >= 1000)
+         {
+            System.out.println("Error: User tried to access system stack. Process exiting.");
+            System.exit(0);
+         }
+         printWriter.printf("1," + programCounter + "\n");
+         printWriter.flush();
+         if (memory_reader.hasNext())
+         {
+            String temp = memory_reader.next();
+            if(!temp.isEmpty())
+            {
+               int temp2 = Integer.parseInt(temp);
+               code=temp2; 
+            }
+            
+         }
+         else
+            code=-1;
+            
+         if (code != -1)
+         {
+            instructionSet(code, printWriter, inputStream, memory_reader, outputStream);
+         }
+         else
+            break;
       }
    }
 
-   // function to read data at given address from memory
    private static int readFromMemory(PrintWriter printWriter, InputStream inputStream, Scanner memory_reader, OutputStream outputStream, int address) 
    {
-      checkMemoryViolation(address);
+      if(inUserMode && address >= 1000)
+      {
+         System.out.println("Error: User tried to access system stack. Process exiting.");
+         System.exit(0);
+      }
       printWriter.printf("1," + address + "\n");
       printWriter.flush();
       if (memory_reader.hasNext())
@@ -128,14 +138,14 @@ public class Processor
    }
 
    // function to childProcessess an instruction received from the memory
-   private static void childProcessessInstruction(int value, PrintWriter printWriter, InputStream inputStream, Scanner memory_reader, OutputStream outputStream) 
+   private static void instructionSet(int code, PrintWriter printWriter, InputStream inputStream, Scanner memory_reader, OutputStream outputStream) 
    {
-      instructionRegister = value; //store instruction in Instruction register
+      instructionRegister = code; //store instruction in Instruction register
       int operand;    //to store operand
       
       switch(instructionRegister)
       {
-         case 1: //Load the value into the accumulator
+         case 1: //Load the code into the accumulator
             programCounter++; // increment counter to get operand
             operand = readFromMemory(printWriter, inputStream, memory_reader, outputStream, programCounter);
             accumulator = operand;
@@ -144,7 +154,7 @@ public class Processor
             programCounter++;
             break;
              
-         case 2: // Load the value at the address into the accumulator
+         case 2: // Load the code at the address into the accumulator
             programCounter++;
             operand = readFromMemory(printWriter, inputStream, memory_reader, outputStream, programCounter);
             accumulator = readFromMemory(printWriter, inputStream, memory_reader, outputStream, operand);
@@ -153,7 +163,7 @@ public class Processor
             programCounter++;
             break;
       
-         case 3: // Load the value from the address found in the address into the accumulator
+         case 3: // Load the code from the address found in the address into the accumulator
             programCounter++;
             operand = readFromMemory(printWriter, inputStream, memory_reader, outputStream, programCounter);
             operand = readFromMemory(printWriter, inputStream, memory_reader, outputStream, operand);
@@ -164,7 +174,7 @@ public class Processor
             break;
              
              
-         case 4: // Load the value at (address+xRegister) into the accumulator
+         case 4: // Load the code at (address+xRegister) into the accumulator
             programCounter++;
             operand = readFromMemory(printWriter, inputStream, memory_reader, outputStream, programCounter);
             accumulator = readFromMemory(printWriter, inputStream, memory_reader, outputStream, operand + xRegister);
@@ -173,7 +183,7 @@ public class Processor
             programCounter++;
             break;
              
-         case 5: //Load the value at (address+yRegister) into the accumulator
+         case 5: //Load the code at (address+yRegister) into the accumulator
             programCounter++;
             operand = readFromMemory(printWriter, inputStream, memory_reader, outputStream, programCounter);
             accumulator = readFromMemory(printWriter, inputStream, memory_reader, outputStream, operand + yRegister);
@@ -189,7 +199,7 @@ public class Processor
             programCounter++;
             break;
              
-         case 7: //Store the value in the accumulator into the address
+         case 7: //Store the code in the accumulator into the address
             programCounter++;
             operand = readFromMemory(printWriter, inputStream, memory_reader, outputStream, programCounter);
             writeToMemory(printWriter, inputStream, outputStream, operand, accumulator);
@@ -238,48 +248,48 @@ public class Processor
                break;
             }
             
-         case 10: // Add the value in xRegister to the accumulator
+         case 10: // Add the code in xRegister to the accumulator
             accumulator = accumulator + xRegister;
             if(interruptsDisabled == false) 
                instructionCount++;
             programCounter++;
             break;
              
-         case 11: //Add the value in yRegister to the accumulator
+         case 11: //Add the code in yRegister to the accumulator
             accumulator = accumulator + yRegister;
             if(interruptsDisabled == false) 
                instructionCount++;
             programCounter++;
             break;
              
-         case 12: //Subtract the value in xRegister from the accumulator
+         case 12: //Subtract the code in xRegister from the accumulator
             accumulator = accumulator - xRegister;
             if(interruptsDisabled == false) 
                instructionCount++;
             programCounter++;
             break;
-         case 13: //Subtract the value in yRegister from the accumulator
+         case 13: //Subtract the code in yRegister from the accumulator
             accumulator = accumulator - yRegister;
             if(interruptsDisabled == false) 
                instructionCount++;
             programCounter++;
             break;
              
-         case 14: //Copy the value in the accumulator to xRegister
+         case 14: //Copy the code in the accumulator to xRegister
             xRegister = accumulator;
             if(interruptsDisabled == false) 
                instructionCount++;
             programCounter++;
             break;
              
-         case 15: //Copy the value in xRegister to the accumulator
+         case 15: //Copy the code in xRegister to the accumulator
             accumulator = xRegister;
             if(interruptsDisabled == false) 
                instructionCount++;
             programCounter++;
             break;
              
-         case 16: //Copy the value in the accumulator to yRegister
+         case 16: //Copy the code in the accumulator to yRegister
             yRegister = accumulator;
             if(interruptsDisabled == false) 
                instructionCount++;
@@ -287,21 +297,21 @@ public class Processor
             break;
              
              
-         case 17: //Copy the value in yRegister to the accumulator
+         case 17: //Copy the code in yRegister to the accumulator
             accumulator = yRegister;
             if(interruptsDisabled == false) 
                instructionCount++;
             programCounter++;
             break;
              
-         case 18: //Copy the value in accumulator to the stackPointer
+         case 18: //Copy the code in accumulator to the stackPointer
             stackPointer = accumulator;
             if(interruptsDisabled == false) 
                instructionCount++;
             programCounter++;
             break;
              
-         case 19: //Copy the value in stackPointer to the accumulator 
+         case 19: //Copy the code in stackPointer to the accumulator 
             accumulator = stackPointer;
             if(interruptsDisabled == false) 
                instructionCount++;
@@ -316,7 +326,7 @@ public class Processor
                instructionCount++;
             break;
              
-         case 21: // Jump to the address only if the value in the accumulator is zero
+         case 21: // Jump to the address only if the code in the accumulator is zero
             programCounter++;
             operand = readFromMemory(printWriter, inputStream, memory_reader, outputStream, programCounter);
             if (accumulator == 0) 
@@ -332,7 +342,7 @@ public class Processor
             break;
              
              
-         case 22: // Jump to the address only if the value in the accumulator is not zero
+         case 22: // Jump to the address only if the code in the accumulator is not zero
             programCounter++;
             operand = readFromMemory(printWriter, inputStream, memory_reader, outputStream, programCounter);
             if (accumulator != 0) 
@@ -366,14 +376,14 @@ public class Processor
                instructionCount++;
             break;
              
-         case 25: //Increment the value in xRegister
+         case 25: //Increment the code in xRegister
             xRegister++;
             if(interruptsDisabled == false) 
                instructionCount++;
             programCounter++;
             break;
          
-         case 26: //Decrement the value in xRegister
+         case 26: //Decrement the code in xRegister
             xRegister--;
             if(interruptsDisabled == false) 
                instructionCount++;
@@ -437,18 +447,14 @@ public class Processor
       }
    }
 
-   // function to check if user program if trying to access system memory and stack
-   private static void checkMemoryViolation(int address) 
+   // function to push a code to the appropriate stack
+   private static void pushValueToStack(PrintWriter printWriter, InputStream inputStream, OutputStream outputStream, int code) 
    {
-      if(inUserMode && address >= 1000)
-      {
-         System.out.println("Error: User tried to access system stack. Process exiting.");
-         System.exit(0);
-      }
-      
+      stackPointer--;
+      writeToMemory(printWriter, inputStream, outputStream, stackPointer, code);
    }
 
-   // function to pop a value from the appropriate stack
+   // function to pop a code from the appropriate stack
    private static int popValueFromStack(PrintWriter printWriter, InputStream inputStream, Scanner memory_reader, OutputStream outputStream) 
    {
       int temp = readFromMemory(printWriter, inputStream, memory_reader, outputStream, stackPointer);
