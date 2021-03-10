@@ -448,20 +448,6 @@ public class Processor
       
    }
 
-   // function to handle interrupts caused by the timer
-   private static void interruptFromTimer(PrintWriter printWriter, InputStream inputStream, Scanner memory_reader, OutputStream outputStream) 
-   {
-      
-      
-   }
-
-   // function to push a value to the appropriate stack
-   private static void pushValueToStack(PrintWriter printWriter, InputStream inputStream, OutputStream outputStream, int value) 
-   {
-      stackPointer--;
-      writeToMemory(printWriter, inputStream, outputStream, stackPointer, value);
-   }
-
    // function to pop a value from the appropriate stack
    private static int popValueFromStack(PrintWriter printWriter, InputStream inputStream, Scanner memory_reader, OutputStream outputStream) 
    {
