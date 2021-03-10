@@ -1,4 +1,4 @@
-   /*
+/*
    Pavan Kumar Govu
       Prof. Ozbin
       CS 4348.001
@@ -55,22 +55,30 @@ public class Processor
          OutputStream outputStream = childProcess.getOutputStream();
          PrintWriter printWriter = new PrintWriter(outputStream);
       
-         // Send file name to child childProcessess
-         printWriter.printf(inputFileName + "\n");  //send filename to memory
+      
+         printWriter.printf(inputFileName + "\n");
          printWriter.flush();
          
          // this loop will keep the communication going between CPU and memory
          while (true)
          {
-            
-            // check to see if timer interrupt has occured
-            if(instructionCount > 0 
-                   && (instructionCount % alarm) == 0 && interruptsDisabled == false)
-            {
-               // childProcessess the interrupt
-               interruptsDisabled = true;
-               interruptFromTimer(printWriter, inputStream, memory_reader, outputStream);
-            }
+            if(instructionCount > 0)
+               if((instructionCount % alarm) == 0)
+                  if(interruptsDisabled == false)
+                  {
+                     interruptsDisabled = true;
+                     int operand;
+                     inUserMode = false;
+                     operand = stackPointer;
+                     stackPointer = systemMemoryLimit;
+                     stackPointer--;
+                     writeToMemory(printWriter, inputStream, outputStream, stackPointer, operand);
+                  
+                     operand = programCounter;
+                     programCounter = 1000;
+                     stackPointer--;
+                     writeToMemory(printWriter, inputStream, outputStream, stackPointer, operand);
+                  }
             
             // read instruction from memory
             int value = readFromMemory(printWriter, inputStream, memory_reader, outputStream, programCounter);
@@ -342,7 +350,8 @@ public class Processor
          case 23: //Push return address onto stack, jump to the address
             programCounter++;
             operand = readFromMemory(printWriter, inputStream, memory_reader, outputStream, programCounter);
-            pushValueToStack(printWriter, inputStream, outputStream,programCounter+1);
+            stackPointer--;
+            writeToMemory(printWriter, inputStream, outputStream, stackPointer, programCounter+1);
             userMemoryLimit = stackPointer;
             programCounter = operand;
             if(interruptsDisabled == false) 
@@ -372,7 +381,8 @@ public class Processor
             break;
          
          case 27: // Push accumulator onto stack
-            pushValueToStack(printWriter, inputStream, outputStream,accumulator);
+            stackPointer--;
+            writeToMemory(printWriter, inputStream, outputStream, stackPointer, accumulator);
             programCounter++;
             if(interruptsDisabled == false) 
                instructionCount++;
@@ -391,11 +401,13 @@ public class Processor
             inUserMode = false;
             operand = stackPointer;
             stackPointer = 2000;
-            pushValueToStack(printWriter, inputStream, outputStream, operand);
+            stackPointer--;
+            writeToMemory(printWriter, inputStream, outputStream, stackPointer, operand);
             
             operand = programCounter + 1;
             programCounter = 1500;
-            pushValueToStack(printWriter, inputStream, outputStream, operand);
+            stackPointer--;
+            writeToMemory(printWriter, inputStream, outputStream, stackPointer, operand);
             
             if(interruptsDisabled == false) 
                instructionCount++;
@@ -439,15 +451,7 @@ public class Processor
    // function to handle interrupts caused by the timer
    private static void interruptFromTimer(PrintWriter printWriter, InputStream inputStream, Scanner memory_reader, OutputStream outputStream) 
    {
-      int operand;
-      inUserMode = false;
-      operand = stackPointer;
-      stackPointer = systemMemoryLimit;
-      pushValueToStack(printWriter, inputStream, outputStream, operand);
-   
-      operand = programCounter;
-      programCounter = 1000;
-      pushValueToStack(printWriter, inputStream, outputStream, operand);
+      
       
    }
 
